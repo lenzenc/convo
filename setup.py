@@ -263,8 +263,15 @@ def generate_conversation_data(num_conversations=None):
         # Generate random session info
         session_id = f"session_{session_counter:06d}"
         
-        # Random number of interactions per conversation (1-8)
-        num_interactions = random.randint(1, 8)
+        # Generate interactions based on desired distribution:
+        # 75% = 1 interaction, 20% = 2 interactions, 5% = 3+ interactions
+        rand_value = random.random()
+        if rand_value < 0.75:
+            num_interactions = 1
+        elif rand_value < 0.95:  # 0.75 + 0.20 = 0.95
+            num_interactions = 2
+        else:  # remaining 5%
+            num_interactions = random.randint(3, 8)
         
         # Random date within the past 3 months
         random_date = start_date + timedelta(
@@ -540,6 +547,7 @@ def main():
             logger.info(f"- Generated {NUM_CONVERSATIONS} realistic retail conversations")
             logger.info(f"- Data spans the past {DATA_TIMESPAN_DAYS} days")
             logger.info("- Conversations grouped by session_id")
+            logger.info("- Session distribution: 75% single interaction, 20% two interactions, 5% three+ interactions")
             logger.info("- Includes realistic retail operational Q&A")
             logger.info(f"- {FAILURE_RESPONSE_RATE}% of conversations have 'Sorry, I can't answer that' responses")
         
