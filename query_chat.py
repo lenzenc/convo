@@ -80,6 +80,13 @@ def display_help():
 - Type 'quit' or 'exit' to quit
 - Type 'debug on' to show generated SQL queries
 - Type 'debug off' to hide SQL queries
+- Type 'clear' to clear conversation context for fresh start
+
+## 🔗 Follow-up Queries
+You can ask follow-up questions that reference previous results:
+- "Show me the ones that contain 'Sorry'"
+- "Filter those by location 1001"  
+- "From those sessions, show me the questions"
     """
     console.print(Markdown(help_text))
 
@@ -204,8 +211,13 @@ def main():
     # Main interaction loop
     while True:
         try:
+            # Create prompt with context indicator
+            prompt_text = "🤔 [bold blue]Your question[/bold blue]"
+            if agent.last_query:
+                prompt_text += " [dim](context available)[/dim]"
+            
             # Get user input
-            question = Prompt.ask("🤔 [bold blue]Your question[/bold blue]", default="").strip()
+            question = Prompt.ask(prompt_text, default="").strip()
             
             if not question:
                 continue
@@ -224,6 +236,10 @@ def main():
             elif question.lower() == 'debug off':
                 debug_mode = False
                 console.print("🔧 [yellow]Debug mode disabled[/yellow]")
+                continue
+            elif question.lower() == 'clear':
+                agent.clear_context()
+                console.print("🧹 [yellow]Conversation context cleared - fresh start![/yellow]")
                 continue
             
             # Process the query

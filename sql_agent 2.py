@@ -8,7 +8,6 @@ import os
 import re
 import logging
 import duckdb
-from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 import google.generativeai as genai
 from openai import OpenAI
@@ -23,7 +22,6 @@ MINIO_ACCESS_KEY = os.getenv('MINIO_ACCESS_KEY', 'minioadmin')
 MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY', 'minioadmin123')
 BUCKET_NAME = os.getenv('BUCKET_NAME', 'convo')
 DEFAULT_AI_PROVIDER = os.getenv('DEFAULT_AI_PROVIDER', 'openai')
-DEFAULT_AI_MODEL = os.getenv('DEFAULT_AI_MODEL', 'gpt-4')
 DUCKDB_CONNECTION = os.getenv('DUCKDB_CONNECTION', ':memory:')
 MAX_DISPLAY_ROWS = int(os.getenv('MAX_DISPLAY_ROWS', '10'))
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
@@ -49,12 +47,6 @@ class SQLAgent:
         else:
             self.use_openai = use_openai
         self.table_schema = self._get_table_schema()
-        
-        # Initialize conversation context tracking
-        self.conversation_history = []
-        self.last_query = None
-        self.last_sql = None
-        self.last_results = None
         
         # Initialize AI clients
         if self.use_openai:
@@ -109,14 +101,9 @@ class SQLAgent:
             ]
         }
     
-    def _create_system_prompt(self, include_context: bool = False) -> str:
+    def _create_system_prompt(self) -> str:
         """Create the system prompt with table schema information."""
         schema_info = self.table_schema
-        
-        # Get current date for relative date queries
-        today = datetime.now().date()
-        yesterday = today - timedelta(days=1)
-        two_days_ago = today - timedelta(days=2)
         
         prompt = f"""You are a DuckDB SQL expert. Your job is to convert natural language questions into valid DuckDB SQL queries.
 
@@ -131,11 +118,6 @@ COLUMNS:
             prompt += f"- {col}: {desc}\n"
         
         prompt += f"""
-CURRENT DATE CONTEXT:
-- Today's date: {today}
-- Yesterday: {yesterday}
-- Two days ago: {two_days_ago}
-
 IMPORTANT DUCKDB SYNTAX RULES:
 1. Always query from the S3 path: '{schema_info['s3_path']}'
 2. Use proper DuckDB syntax for arrays and structs
@@ -144,47 +126,6 @@ IMPORTANT DUCKDB SYNTAX RULES:
 5. Date functions: Use EXTRACT(field FROM date) or date_part('field', date)
 6. String matching: Use LIKE or ILIKE for case-insensitive
 7. Always include proper GROUP BY clauses when using aggregations
-8. NEVER use relative date terms like 'today', 'yesterday', etc. Always use explicit dates in YYYY-MM-DD format
-9. For date comparisons, use proper DATE literals: DATE '2025-01-31'
-10. NEVER use MySQL syntax like DATE_SUB(), DATE_ADD(), or INTERVAL - these don't work in DuckDB
-11. For date arithmetic in DuckDB, use: CURRENT_DATE - INTERVAL 2 DAY or DATE '2025-01-31' - INTERVAL '2 days'
-12. But PREFER using explicit date literals from the context provided above
-13. **ALWAYS use human-readable column aliases instead of raw database column names**
-
-COLUMN ALIASING REQUIREMENTS:
-- Use meaningful, human-readable names for all columns in SELECT statements
-- Transform technical column names into user-friendly labels
-- Examples of good aliases:
-  * session_id → "Session ID"
-  * interaction_id → "Interaction"
-  * question_created → "Question Time"
-  * answer_created → "Answer Time"
-  * user_id → "User ID"
-  * location_id → "Store Location"
-  * region_id → "Region"
-  * group_id → "Group"
-  * district_id → "District"
-  * user_roles → "User Roles"
-  * COUNT(*) → "Total Count"
-  * COUNT(DISTINCT session_id) → "Unique Sessions"
-  * AVG(interaction_id) → "Average Interactions"
-
-FORBIDDEN SYNTAX (DO NOT USE):
-- DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY) ❌
-- DATE_ADD(date, INTERVAL 1 DAY) ❌
-- CURDATE() ❌
-
-CORRECT DUCKDB DATE SYNTAX:
-- CURRENT_DATE ✅
-- DATE '2025-01-31' ✅
-- CURRENT_DATE - INTERVAL 2 DAY ✅
-- date >= DATE '2025-01-24' AND date <= DATE '2025-01-31' ✅
-
-DATE HANDLING EXAMPLES:
-- "conversations from today" → WHERE date = DATE '{today}'
-- "conversations from yesterday" → WHERE date = DATE '{yesterday}'
-- "conversations from two days ago" → WHERE date = DATE '{two_days_ago}'
-- "conversations from last week" → WHERE date >= DATE '{today - timedelta(days=7)}' AND date < DATE '{today}'
 
 SAMPLE QUERIES:
 {chr(10).join(schema_info['sample_queries'])}
@@ -192,77 +133,29 @@ SAMPLE QUERIES:
 RESPONSE FORMAT:
 Return ONLY the SQL query, no explanations or markdown formatting. The query should be ready to execute directly in DuckDB.
 
-CONTEXT HANDLING FOR FOLLOW-UP QUERIES:
-You can receive follow-up questions that reference previous queries and results. When handling follow-ups:
-- "the ones", "those", "them" refer to results from the previous query
-- "show me the ones that..." means filter the previous results
-- "from those" means use previous results as context
-- Build upon previous WHERE conditions when filtering previous results
-- Maintain the same SELECT columns as the previous query when filtering
-
 EXAMPLES:
 User: "How many conversations are there?"
-Response: SELECT COUNT(*) as "Total Conversations" FROM '{schema_info['s3_path']}'
+Response: SELECT COUNT(*) FROM '{schema_info['s3_path']}'
 
 User: "Show me conversations by date"
-Response: SELECT date as "Date", COUNT(*) as "Conversation Count" FROM '{schema_info['s3_path']}' GROUP BY date ORDER BY date
-
-User: "Show me all conversations from two days ago"
-Response: SELECT session_id as "Session ID", interaction_id as "Interaction", question as "Question", answer as "Answer", user_id as "User ID", location_id as "Store Location" FROM '{schema_info['s3_path']}' WHERE date = DATE '{two_days_ago}'
+Response: SELECT date, COUNT(*) as conversation_count FROM '{schema_info['s3_path']}' GROUP BY date ORDER BY date
 
 User: "What are the most common actions?"
-Response: SELECT action as "Action Type", COUNT(*) as "Count" FROM '{schema_info['s3_path']}' GROUP BY action ORDER BY COUNT(*) DESC
-
-User: "Show me sessions with more than 3 interactions"
-Response: SELECT session_id as "Session ID", COUNT(*) as "Total Interactions" FROM '{schema_info['s3_path']}' GROUP BY session_id HAVING COUNT(*) > 3 ORDER BY COUNT(*) DESC
-
-CONTEXT-AWARE FOLLOW-UP EXAMPLES:
-Previous query: "Show me all conversations from yesterday"
-Follow-up: "Show me the ones that contain 'Sorry'"
-Response: SELECT session_id as "Session ID", interaction_id as "Interaction", question as "Question", answer as "Answer" FROM '{schema_info['s3_path']}' WHERE date = DATE '{yesterday}' AND (question ILIKE '%Sorry%' OR answer ILIKE '%Sorry%')
-
-Previous query: "What are the most common actions?"
-Follow-up: "Show me the conversations from those actions"
-Response: SELECT session_id as "Session ID", action as "Action Type", question as "Question", answer as "Answer" FROM '{schema_info['s3_path']}' WHERE action IN (SELECT action FROM '{schema_info['s3_path']}' GROUP BY action ORDER BY COUNT(*) DESC)
+Response: SELECT action, COUNT(*) as count FROM '{schema_info['s3_path']}' GROUP BY action ORDER BY count DESC
 """
-        
-        # Add conversation context if available
-        if include_context and self.last_query and self.last_sql:
-            prompt += f"""
-
-CONVERSATION CONTEXT:
-Previous Question: {self.last_query}
-Previous SQL Query: {self.last_sql}
-Previous Results Count: {len(self.last_results) if self.last_results else 0}
-
-When the user refers to "the ones", "those", "them", or similar references, they are referring to the results of the previous query above.
-Build upon the previous query conditions when creating follow-up queries.
-"""
-        
         return prompt
-    
-    def _is_follow_up_question(self, question: str) -> bool:
-        """Detect if a question is a follow-up that references previous results."""
-        follow_up_indicators = [
-            "the ones", "those", "them", "from those", "of those",
-            "show me the", "filter", "from the previous", "from that",
-            "in those", "among them", "within those", "for those"
-        ]
-        question_lower = question.lower()
-        return any(indicator in question_lower for indicator in follow_up_indicators)
     
     def _generate_sql_openai(self, question: str) -> str:
         """Generate SQL using OpenAI."""
         try:
-            # Check if this is a follow-up question
-            is_follow_up = self._is_follow_up_question(question)
-            
             response = self.openai_client.chat.completions.create(
-                model=DEFAULT_AI_MODEL,
+                model="gpt-4",
                 messages=[
-                    {"role": "system", "content": self._create_system_prompt(include_context=is_follow_up)},
+                    {"role": "system", "content": self._create_system_prompt()},
                     {"role": "user", "content": question}
-                ]
+                ],
+                temperature=0.1,
+                max_tokens=500
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
@@ -272,10 +165,7 @@ Build upon the previous query conditions when creating follow-up queries.
     def _generate_sql_google(self, question: str) -> str:
         """Generate SQL using Google AI."""
         try:
-            # Check if this is a follow-up question
-            is_follow_up = self._is_follow_up_question(question)
-            
-            prompt = f"{self._create_system_prompt(include_context=is_follow_up)}\n\nUser Question: {question}\nSQL Query:"
+            prompt = f"{self._create_system_prompt()}\n\nUser Question: {question}\nSQL Query:"
             response = self.google_model.generate_content(prompt)
             return response.text.strip()
         except Exception as e:
@@ -358,33 +248,11 @@ Build upon the previous query conditions when creating follow-up queries.
             # Execute the query
             results = self.execute_query(sql)
             
-            # Store conversation context for follow-up queries
-            self.last_query = question
-            self.last_sql = sql
-            self.last_results = results
-            
-            # Add to conversation history (keep last 5 for context)
-            self.conversation_history.append({
-                'question': question,
-                'sql': sql,
-                'result_count': len(results) if results else 0
-            })
-            if len(self.conversation_history) > 5:
-                self.conversation_history.pop(0)
-            
             return results
             
         except Exception as e:
             logger.error(f"Error processing question '{question}': {e}")
             raise
-    
-    def clear_context(self):
-        """Clear conversation context for a fresh start."""
-        self.conversation_history = []
-        self.last_query = None
-        self.last_sql = None
-        self.last_results = None
-        logger.info("Conversation context cleared")
     
     def format_results(self, results: List[Dict[str, Any]], max_rows: int = None) -> str:
         """Format query results for console display."""

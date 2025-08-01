@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "convo"
+version = "0.1.0"
+description = ""
+authors = ["Craig Lenzen <lenzenc@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+duckdb = "^1.0.0"
+boto3 = "^1.35.0"
+google-generativeai = "^0.8.0"
+openai = "^1.0.0"
+pytz = "^2024.1"
+python-dotenv = "^1.0.0"
+gradio = "^4.20.0"
+flask = "^3.0.0"
+pandas = "^2.0.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -87,6 +87,7 @@ The project includes an AI agent that converts natural language questions into D
 - **Schema-Aware**: Understands table structure and generates appropriate queries
 - **Rich CLI Interface**: Beautiful terminal interface with formatted tables and markdown
 - **Debug Mode**: Optional SQL query display for troubleshooting
+- **Follow-up Queries**: Ask contextual follow-up questions that reference previous results
 
 ### Example Questions:
 - "How many conversations are there?"
@@ -107,8 +108,14 @@ python query_chat.py
 # Available commands in CLI:
 # - Type your question and press Enter
 # - 'help' for example questions
-# - 'debug on/off' to show/hide SQL queries  
+# - 'debug on/off' to show/hide SQL queries
+# - 'clear' to clear conversation context
 # - 'quit' or 'exit' to quit
+
+# Follow-up query examples:
+# 1. "Show me conversations from yesterday"  
+# 2. "Show me the ones that contain 'Sorry'" (references previous results)
+# 3. "Filter those by store 1001" (further refines previous results)
 ```
 
 ## Manual SQL Querying
