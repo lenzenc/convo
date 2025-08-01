@@ -36,6 +36,9 @@ python manage_views.py list                 # List all views
 python manage_views.py show view_name       # Show view details  
 python manage_views.py test view_name       # Test a view
 python manage_views.py create-defaults      # Create default views
+
+# Start the REST API server
+python start_api.py                         # Start FastAPI server on port 8000
 ```
 
 ## Infrastructure
@@ -145,3 +148,39 @@ The system includes pre-built database views for common analytics queries:
 - Views improve query performance by pre-aggregating common patterns
 - View definitions are stored in `views_config.json`
 - Use `manage_views.py` for view administration
+
+## REST API
+
+The project includes a FastAPI-based REST API for programmatic access to the conversation analytics data:
+
+### API Endpoints:
+- **GET /**: Health check endpoint
+- **GET /health**: Detailed health check with component status  
+- **GET /views**: List all available database views
+- **GET /views/{view_name}**: Get details for a specific view
+- **GET /views/{view_name}/execute**: Execute a view and return results as JSON
+- **GET /query**: AI-powered natural language querying
+- **POST /query**: AI-powered querying with request body
+
+### API Features:
+- **RESTful Design**: Standard HTTP methods and status codes
+- **JSON Responses**: All data returned in JSON format with proper serialization
+- **Query Parameters**: Support for limiting results, debug mode, etc.
+- **Error Handling**: Comprehensive error responses with details
+- **API Documentation**: Interactive docs at `/docs` and `/redoc`
+- **Health Monitoring**: Built-in health check endpoints
+
+### Example API Usage:
+```bash
+# List all views
+curl http://localhost:8000/views
+
+# Execute the interactions_per_day view with limit
+curl "http://localhost:8000/views/interactions_per_day/execute?limit=10"
+
+# AI-powered query
+curl "http://localhost:8000/query?q=Show me popular actions&debug=true"
+
+# View API documentation
+open http://localhost:8000/docs
+```
