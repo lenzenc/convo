@@ -4,6 +4,7 @@ Setup script for conversation analytics project.
 Creates MinIO S3 bucket and DuckDB tables with sample data.
 """
 
+import os
 import boto3
 import duckdb
 from botocore.exceptions import ClientError
@@ -12,15 +13,24 @@ import argparse
 import random
 import uuid
 from datetime import datetime, timedelta, timezone
-import json
+from dotenv import load_dotenv
 
-# Configuration
-MINIO_ENDPOINT = "http://localhost:9000"
-MINIO_ACCESS_KEY = "minioadmin"
-MINIO_SECRET_KEY = "minioadmin123"
-BUCKET_NAME = "convo"
+# Load environment variables
+load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
+# Configuration from environment variables
+MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT', 'http://localhost:9000')
+MINIO_ACCESS_KEY = os.getenv('MINIO_ACCESS_KEY', 'minioadmin')
+MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY', 'minioadmin123')
+BUCKET_NAME = os.getenv('BUCKET_NAME', 'convo')
+NUM_CONVERSATIONS = int(os.getenv('NUM_CONVERSATIONS', '5000'))
+FAILURE_RESPONSE_RATE = int(os.getenv('FAILURE_RESPONSE_RATE', '25'))
+DATA_TIMESPAN_DAYS = int(os.getenv('DATA_TIMESPAN_DAYS', '90'))
+BATCH_SIZE = int(os.getenv('BATCH_SIZE', '1000'))
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+DEBUG_MODE = os.getenv('DEBUG_MODE', 'False').lower() == 'true'
+
+logging.basicConfig(level=getattr(logging, LOG_LEVEL.upper()))
 logger = logging.getLogger(__name__)
 
 # Sample data for realistic retail conversations
@@ -234,15 +244,18 @@ def delete_table_data():
         raise
 
 
-def generate_conversation_data(num_conversations=5000):
+def generate_conversation_data(num_conversations=None):
     """Generate realistic conversation data for retail operations."""
+    if num_conversations is None:
+        num_conversations = NUM_CONVERSATIONS
+    
     logger.info(f"Generating {num_conversations} conversations...")
     
     conversations = []
     
-    # Generate date range for past 3 months
+    # Generate date range based on configuration
     end_date = datetime.now(timezone.utc)
-    start_date = end_date - timedelta(days=90)
+    start_date = end_date - timedelta(days=DATA_TIMESPAN_DAYS)
     
     session_counter = 1
     
@@ -280,8 +293,8 @@ def generate_conversation_data(num_conversations=5000):
             qa_index = random.randint(0, len(RETAIL_QUESTIONS) - 1)
             question = RETAIL_QUESTIONS[qa_index]
             
-            # 25% of conversations get "Sorry, I can't answer that" response
-            if random.random() < 0.25:
+            # Configurable percentage of conversations get "Sorry, I can't answer that" response
+            if random.random() < (FAILURE_RESPONSE_RATE / 100):
                 answer = "Sorry, I can't answer that."
             else:
                 answer = RETAIL_ANSWERS[qa_index]
@@ -389,7 +402,7 @@ def setup_duckdb_tables(with_sample_data=False):
             """)
             
             # Insert data in batches for better performance
-            batch_size = 1000
+            batch_size = BATCH_SIZE
             for i in range(0, len(conversations), batch_size):
                 batch = conversations[i:i + batch_size]
                 
@@ -524,11 +537,11 @@ def main():
         
         if args.add_data:
             logger.info("\nSample data created!")
-            logger.info("- Generated 5000 realistic retail conversations")
-            logger.info("- Data spans the past 3 months")
+            logger.info(f"- Generated {NUM_CONVERSATIONS} realistic retail conversations")
+            logger.info(f"- Data spans the past {DATA_TIMESPAN_DAYS} days")
             logger.info("- Conversations grouped by session_id")
             logger.info("- Includes realistic retail operational Q&A")
-            logger.info("- 25% of conversations have 'Sorry, I can't answer that' responses")
+            logger.info(f"- {FAILURE_RESPONSE_RATE}% of conversations have 'Sorry, I can't answer that' responses")
         
         logger.info("\nNext steps:")
         logger.info("1. Start services: docker-compose up -d")

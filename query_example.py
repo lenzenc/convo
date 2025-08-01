@@ -3,15 +3,23 @@
 Example script showing how to query tables stored in S3 with DuckDB.
 """
 
+import os
 import duckdb
 import logging
+from dotenv import load_dotenv
 
-# Configuration
-MINIO_ACCESS_KEY = "minioadmin"
-MINIO_SECRET_KEY = "minioadmin123"
-BUCKET_NAME = "convo"
+# Load environment variables
+load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
+# Configuration from environment variables
+MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT', 'http://localhost:9000')
+MINIO_ACCESS_KEY = os.getenv('MINIO_ACCESS_KEY', 'minioadmin')
+MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY', 'minioadmin123')
+BUCKET_NAME = os.getenv('BUCKET_NAME', 'convo')
+DUCKDB_CONNECTION = os.getenv('DUCKDB_CONNECTION', ':memory:')
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+
+logging.basicConfig(level=getattr(logging, LOG_LEVEL.upper()))
 logger = logging.getLogger(__name__)
 
 
@@ -19,20 +27,21 @@ def query_conversation_data():
     """Example of querying conversation data from S3."""
     logger.info("Connecting to DuckDB and querying S3 data...")
     
-    # Connect to DuckDB in-memory
-    conn = duckdb.connect(':memory:')
+    # Connect to DuckDB using configuration
+    conn = duckdb.connect(DUCKDB_CONNECTION)
     
     try:
         # Install and load required extensions
         conn.execute("INSTALL httpfs;")
         conn.execute("LOAD httpfs;")
         
-        # Configure S3 settings for MinIO
+        # Configure S3 settings for MinIO using environment variables
+        endpoint = MINIO_ENDPOINT.replace('http://', '').replace('https://', '')
         conn.execute(f"""
-            SET s3_endpoint = 'localhost:9000';
+            SET s3_endpoint = '{endpoint}';
             SET s3_access_key_id = '{MINIO_ACCESS_KEY}';
             SET s3_secret_access_key = '{MINIO_SECRET_KEY}';
-            SET s3_use_ssl = false;
+            SET s3_use_ssl = {'true' if 'https' in MINIO_ENDPOINT else 'false'};
             SET s3_url_style = 'path';
         """)
         

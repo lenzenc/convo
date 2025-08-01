@@ -36,6 +36,10 @@ cd convo
 poetry install
 # OR using pip
 pip install -r requirements.txt
+
+# Copy configuration template
+cp .env.example .env
+# Edit .env with your settings (API keys, etc.)
 ```
 
 ### 2. Start Infrastructure
@@ -131,10 +135,10 @@ result = conn.execute("""
 ### AI-Powered Natural Language Queries
 
 ```bash
-# Set your API key
-export OPENAI_API_KEY="your-openai-api-key"
-# OR
-export GOOGLE_AI_API_KEY="your-google-ai-api-key"
+# Configure your API keys in .env file:
+# OPENAI_API_KEY=your-openai-api-key
+# GOOGLE_AI_API_KEY=your-google-ai-api-key
+# DEFAULT_AI_PROVIDER=openai
 
 # Start interactive chat
 python query_chat.py
@@ -272,9 +276,11 @@ docker-compose up -d
 
 **AI Query Errors**
 ```bash
-# Verify API keys are set
-echo $OPENAI_API_KEY
-echo $GOOGLE_AI_API_KEY
+# Check your .env file contains API keys
+cat .env | grep API_KEY
+
+# Verify environment variables are loaded
+python -c "from dotenv import load_dotenv; load_dotenv(); import os; print('OpenAI:', bool(os.getenv('OPENAI_API_KEY'))); print('Google:', bool(os.getenv('GOOGLE_AI_API_KEY')))"
 ```
 
 ## Contributing

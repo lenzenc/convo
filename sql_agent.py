@@ -11,32 +11,45 @@ import duckdb
 from typing import Dict, List, Any, Optional
 import google.generativeai as genai
 from openai import OpenAI
+from dotenv import load_dotenv
 
-# Configuration
-MINIO_ENDPOINT = "http://localhost:9000"
-MINIO_ACCESS_KEY = "minioadmin"
-MINIO_SECRET_KEY = "minioadmin123"
-BUCKET_NAME = "convo"
+# Load environment variables
+load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
+# Configuration from environment variables
+MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT', 'http://localhost:9000')
+MINIO_ACCESS_KEY = os.getenv('MINIO_ACCESS_KEY', 'minioadmin')
+MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY', 'minioadmin123')
+BUCKET_NAME = os.getenv('BUCKET_NAME', 'convo')
+DEFAULT_AI_PROVIDER = os.getenv('DEFAULT_AI_PROVIDER', 'openai')
+DUCKDB_CONNECTION = os.getenv('DUCKDB_CONNECTION', ':memory:')
+MAX_DISPLAY_ROWS = int(os.getenv('MAX_DISPLAY_ROWS', '10'))
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+DEBUG_MODE = os.getenv('DEBUG_MODE', 'False').lower() == 'true'
+
+logging.basicConfig(level=getattr(logging, LOG_LEVEL.upper()))
 logger = logging.getLogger(__name__)
 
 
 class SQLAgent:
     """AI Agent for natural language to SQL conversion and query execution."""
     
-    def __init__(self, use_openai: bool = True):
+    def __init__(self, use_openai: bool = None):
         """
         Initialize the SQL Agent.
         
         Args:
-            use_openai: If True, use OpenAI. If False, use Google AI.
+            use_openai: If True, use OpenAI. If False, use Google AI. 
+                       If None, use DEFAULT_AI_PROVIDER from environment.
         """
-        self.use_openai = use_openai
+        if use_openai is None:
+            self.use_openai = DEFAULT_AI_PROVIDER.lower() == 'openai'
+        else:
+            self.use_openai = use_openai
         self.table_schema = self._get_table_schema()
         
         # Initialize AI clients
-        if use_openai:
+        if self.use_openai:
             self.openai_client = self._init_openai()
         else:
             self._init_google_ai()
@@ -180,20 +193,21 @@ Response: SELECT action, COUNT(*) as count FROM '{schema_info['s3_path']}' GROUP
         """Execute the SQL query against DuckDB with S3 data."""
         logger.info(f"Executing query: {sql}")
         
-        # Connect to DuckDB in-memory
-        conn = duckdb.connect(':memory:')
+        # Connect to DuckDB using configuration
+        conn = duckdb.connect(DUCKDB_CONNECTION)
         
         try:
             # Install and load required extensions
             conn.execute("INSTALL httpfs;")
             conn.execute("LOAD httpfs;")
             
-            # Configure S3 settings for MinIO
+            # Configure S3 settings for MinIO using environment variables
+            endpoint = MINIO_ENDPOINT.replace('http://', '').replace('https://', '')
             conn.execute(f"""
-                SET s3_endpoint = 'localhost:9000';
+                SET s3_endpoint = '{endpoint}';
                 SET s3_access_key_id = '{MINIO_ACCESS_KEY}';
                 SET s3_secret_access_key = '{MINIO_SECRET_KEY}';
-                SET s3_use_ssl = false;
+                SET s3_use_ssl = {'true' if 'https' in MINIO_ENDPOINT else 'false'};
                 SET s3_url_style = 'path';
             """)
             
@@ -240,10 +254,14 @@ Response: SELECT action, COUNT(*) as count FROM '{schema_info['s3_path']}' GROUP
             logger.error(f"Error processing question '{question}': {e}")
             raise
     
-    def format_results(self, results: List[Dict[str, Any]], max_rows: int = 10) -> str:
+    def format_results(self, results: List[Dict[str, Any]], max_rows: int = None) -> str:
         """Format query results for console display."""
         if not results:
             return "No results found."
+        
+        # Use configured max rows if not specified
+        if max_rows is None:
+            max_rows = MAX_DISPLAY_ROWS
         
         # Limit results for display
         display_results = results[:max_rows]

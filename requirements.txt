@@ -2,6 +2,7 @@
 duckdb>=1.0.0
 boto3>=1.34.0
 pytz>=2024.1
+python-dotenv>=1.0.0
 
 # AI/ML dependencies
 google-generativeai>=0.8.0
