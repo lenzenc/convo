@@ -8,6 +8,7 @@ import os
 import re
 import logging
 import duckdb
+from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 import google.generativeai as genai
 from openai import OpenAI
@@ -105,6 +106,11 @@ class SQLAgent:
         """Create the system prompt with table schema information."""
         schema_info = self.table_schema
         
+        # Get current date for relative date queries
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
+        two_days_ago = today - timedelta(days=2)
+        
         prompt = f"""You are a DuckDB SQL expert. Your job is to convert natural language questions into valid DuckDB SQL queries.
 
 TABLE SCHEMA:
@@ -118,6 +124,11 @@ COLUMNS:
             prompt += f"- {col}: {desc}\n"
         
         prompt += f"""
+CURRENT DATE CONTEXT:
+- Today's date: {today}
+- Yesterday: {yesterday}
+- Two days ago: {two_days_ago}
+
 IMPORTANT DUCKDB SYNTAX RULES:
 1. Always query from the S3 path: '{schema_info['s3_path']}'
 2. Use proper DuckDB syntax for arrays and structs
@@ -126,6 +137,28 @@ IMPORTANT DUCKDB SYNTAX RULES:
 5. Date functions: Use EXTRACT(field FROM date) or date_part('field', date)
 6. String matching: Use LIKE or ILIKE for case-insensitive
 7. Always include proper GROUP BY clauses when using aggregations
+8. NEVER use relative date terms like 'today', 'yesterday', etc. Always use explicit dates in YYYY-MM-DD format
+9. For date comparisons, use proper DATE literals: DATE '2025-01-31'
+10. NEVER use MySQL syntax like DATE_SUB(), DATE_ADD(), or INTERVAL - these don't work in DuckDB
+11. For date arithmetic in DuckDB, use: CURRENT_DATE - INTERVAL 2 DAY or DATE '2025-01-31' - INTERVAL '2 days'
+12. But PREFER using explicit date literals from the context provided above
+
+FORBIDDEN SYNTAX (DO NOT USE):
+- DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY) ❌
+- DATE_ADD(date, INTERVAL 1 DAY) ❌
+- CURDATE() ❌
+
+CORRECT DUCKDB DATE SYNTAX:
+- CURRENT_DATE ✅
+- DATE '2025-01-31' ✅
+- CURRENT_DATE - INTERVAL 2 DAY ✅
+- date >= DATE '2025-01-24' AND date <= DATE '2025-01-31' ✅
+
+DATE HANDLING EXAMPLES:
+- "conversations from today" → WHERE date = DATE '{today}'
+- "conversations from yesterday" → WHERE date = DATE '{yesterday}'
+- "conversations from two days ago" → WHERE date = DATE '{two_days_ago}'
+- "conversations from last week" → WHERE date >= DATE '{today - timedelta(days=7)}' AND date < DATE '{today}'
 
 SAMPLE QUERIES:
 {chr(10).join(schema_info['sample_queries'])}
@@ -139,6 +172,9 @@ Response: SELECT COUNT(*) FROM '{schema_info['s3_path']}'
 
 User: "Show me conversations by date"
 Response: SELECT date, COUNT(*) as conversation_count FROM '{schema_info['s3_path']}' GROUP BY date ORDER BY date
+
+User: "Show me all conversations from two days ago"
+Response: SELECT * FROM '{schema_info['s3_path']}' WHERE date = DATE '{two_days_ago}'
 
 User: "What are the most common actions?"
 Response: SELECT action, COUNT(*) as count FROM '{schema_info['s3_path']}' GROUP BY action ORDER BY count DESC

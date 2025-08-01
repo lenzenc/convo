@@ -140,34 +140,36 @@ result = conn.execute("""
 # GOOGLE_AI_API_KEY=your-google-ai-api-key
 # DEFAULT_AI_PROVIDER=openai
 
-# Start interactive chat
+# Launch web interface
 python query_chat.py
+# Opens automatically at http://localhost:7860
 ```
 
-Example conversations:
-```
-🗣️  Your question: How many conversations are there?
-📊 Results: 12,847 total conversations
+**Web Interface Features:**
+- 🌐 **Clean Web UI**: User-friendly interface with real-time results
+- 📊 **Markdown Rendering**: Results displayed as formatted tables and charts
+- 🔍 **SQL Debug Mode**: View generated SQL queries when `DEBUG_MODE=True`
+- 📱 **Responsive Design**: Works on desktop, tablet, and mobile
+- 🔄 **Real-time Processing**: Instant query execution with loading indicators
 
-🗣️  Your question: What are the busiest hours for conversations?
-📊 Results:
-hour | conversation_count
-14   | 1,245
-15   | 1,198
-13   | 1,156
+**Example Queries:**
+- "How many conversations are there?"
+- "What are the busiest hours for conversations?"
+- "Show me conversations by date"
+- "How many conversations couldn't be answered?"
+- "What are the most common inventory questions?"
 
-🗣️  Your question: How many conversations couldn't be answered?
-📊 Results: 3,211 conversations (25.0%)
-```
-
-### Sample Query Scripts
+### Alternative Query Methods
 
 ```bash
-# Basic querying examples
+# Basic querying examples (command line)
 python query_example.py
 
 # Test the AI agent
 python test_agent.py
+
+# Web interface (recommended)
+python query_chat.py
 ```
 
 ## Management Commands
