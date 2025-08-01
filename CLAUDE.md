@@ -23,7 +23,7 @@ python setup.py
 # Example query script
 python query_example.py
 
-# AI-powered natural language querying
+# AI-powered natural language querying (CLI)
 export OPENAI_API_KEY="your-openai-key"  # OR
 export GOOGLE_AI_API_KEY="your-google-key"
 python query_chat.py
@@ -85,7 +85,8 @@ The project includes an AI agent that converts natural language questions into D
 - **Natural Language Processing**: Ask questions in plain English
 - **Multiple AI Providers**: Supports both OpenAI GPT-4 and Google Gemini
 - **Schema-Aware**: Understands table structure and generates appropriate queries
-- **Interactive Chat**: Real-time query interface with formatted results
+- **Rich CLI Interface**: Beautiful terminal interface with formatted tables and markdown
+- **Debug Mode**: Optional SQL query display for troubleshooting
 
 ### Example Questions:
 - "How many conversations are there?"
@@ -100,8 +101,14 @@ The project includes an AI agent that converts natural language questions into D
 export OPENAI_API_KEY="your-key-here"  # OR
 export GOOGLE_AI_API_KEY="your-key-here"
 
-# Start interactive chat
+# Start interactive CLI
 python query_chat.py
+
+# Available commands in CLI:
+# - Type your question and press Enter
+# - 'help' for example questions
+# - 'debug on/off' to show/hide SQL queries  
+# - 'quit' or 'exit' to quit
 ```
 
 ## Manual SQL Querying
