@@ -23,6 +23,7 @@ MINIO_ACCESS_KEY = os.getenv('MINIO_ACCESS_KEY', 'minioadmin')
 MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY', 'minioadmin123')
 BUCKET_NAME = os.getenv('BUCKET_NAME', 'convo')
 DEFAULT_AI_PROVIDER = os.getenv('DEFAULT_AI_PROVIDER', 'openai')
+DEFAULT_AI_MODEL = os.getenv('DEFAULT_AI_MODEL', 'gpt-4')
 DUCKDB_CONNECTION = os.getenv('DUCKDB_CONNECTION', ':memory:')
 MAX_DISPLAY_ROWS = int(os.getenv('MAX_DISPLAY_ROWS', '10'))
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
@@ -185,13 +186,11 @@ Response: SELECT action, COUNT(*) as count FROM '{schema_info['s3_path']}' GROUP
         """Generate SQL using OpenAI."""
         try:
             response = self.openai_client.chat.completions.create(
-                model="gpt-4",
+                model=DEFAULT_AI_MODEL,
                 messages=[
                     {"role": "system", "content": self._create_system_prompt()},
                     {"role": "user", "content": question}
-                ],
-                temperature=0.1,
-                max_tokens=500
+                ]
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
