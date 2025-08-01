@@ -30,6 +30,12 @@ python query_chat.py
 
 # Test the SQL agent
 python test_agent.py
+
+# Manage database views
+python manage_views.py list                 # List all views
+python manage_views.py show view_name       # Show view details  
+python manage_views.py test view_name       # Test a view
+python manage_views.py create-defaults      # Create default views
 ```
 
 ## Infrastructure
@@ -85,6 +91,7 @@ The project includes an AI agent that converts natural language questions into D
 - **Natural Language Processing**: Ask questions in plain English
 - **Multiple AI Providers**: Supports both OpenAI GPT-4 and Google Gemini
 - **Schema-Aware**: Understands table structure and generates appropriate queries
+- **View-Aware**: Automatically uses pre-built views when appropriate for better performance
 - **Rich CLI Interface**: Beautiful terminal interface with formatted tables and markdown
 - **Debug Mode**: Optional SQL query display for troubleshooting
 
@@ -120,3 +127,21 @@ conn.execute("INSTALL httpfs; LOAD httpfs;")
 # Configure S3 settings...
 result = conn.execute("SELECT * FROM 's3://convo/tables/conversation_entry/**/*.parquet'")
 ```
+
+## Database Views
+
+The system includes pre-built database views for common analytics queries:
+
+### Available Views:
+- **interactions_per_day**: Daily conversation counts and session statistics
+- **popular_actions**: Most common action types with percentages
+- **active_sessions**: Sessions with multiple interactions showing engagement
+- **recent_conversations**: Last 7 days of conversation activity
+- **location_activity**: Conversation activity grouped by store locations
+
+### View Management:
+- Views are automatically created and managed by the system
+- The AI agent prefers using views when they match user questions
+- Views improve query performance by pre-aggregating common patterns
+- View definitions are stored in `views_config.json`
+- Use `manage_views.py` for view administration

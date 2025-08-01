@@ -13,6 +13,7 @@ from typing import Dict, List, Any, Optional
 import google.generativeai as genai
 from openai import OpenAI
 from dotenv import load_dotenv
+from view_manager import ViewManager
 
 # Load environment variables
 load_dotenv()
@@ -49,6 +50,8 @@ class SQLAgent:
         else:
             self.use_openai = use_openai
         self.table_schema = self._get_table_schema()
+        self.view_manager = ViewManager()
+        self.available_views = self.view_manager.get_views_for_agent()
         
         # Initialize AI clients
         if self.use_openai:
@@ -103,6 +106,32 @@ class SQLAgent:
             ]
         }
     
+    def _format_views_for_prompt(self) -> str:
+        """Format available views for inclusion in the system prompt."""
+        if not self.available_views:
+            return "No views are currently available."
+        
+        views_text = ""
+        for view in self.available_views:
+            views_text += f"""
+VIEW: {view['name']}
+Description: {view['description']}
+Usage: {view['usage']}
+Tags: {view['tags']}
+Sample Columns: {', '.join(view['sample_columns']) if view['sample_columns'] else 'N/A'}
+"""
+        return views_text.strip()
+    
+    def _create_views_in_connection(self, conn: duckdb.DuckDBPyConnection) -> None:
+        """Create all available views in the given DuckDB connection."""
+        try:
+            for view_name, view_def in self.view_manager.views.get("views", {}).items():
+                create_view_sql = f"CREATE OR REPLACE VIEW {view_name} AS {view_def['sql_query']}"
+                conn.execute(create_view_sql)
+                logger.debug(f"Created view '{view_name}' in connection")
+        except Exception as e:
+            logger.warning(f"Error creating views in connection: {e}")
+    
     def _create_system_prompt(self) -> str:
         """Create the system prompt with table schema information."""
         schema_info = self.table_schema
@@ -130,20 +159,24 @@ CURRENT DATE CONTEXT:
 - Yesterday: {yesterday}
 - Two days ago: {two_days_ago}
 
+AVAILABLE VIEWS:
+{self._format_views_for_prompt()}
+
 IMPORTANT DUCKDB SYNTAX RULES:
-1. Always query from the S3 path: '{schema_info['s3_path']}'
-2. Use proper DuckDB syntax for arrays and structs
-3. For array columns like user_roles, use array syntax: user_roles[1] for first element
-4. For struct arrays like sources, use: sources[1].name or sources[1].score
-5. Date functions: Use EXTRACT(field FROM date) or date_part('field', date)
-6. String matching: Use LIKE or ILIKE for case-insensitive
-7. Always include proper GROUP BY clauses when using aggregations
-8. NEVER use relative date terms like 'today', 'yesterday', etc. Always use explicit dates in YYYY-MM-DD format
-9. For date comparisons, use proper DATE literals: DATE '2025-01-31'
-10. NEVER use MySQL syntax like DATE_SUB(), DATE_ADD(), or INTERVAL - these don't work in DuckDB
-11. For date arithmetic in DuckDB, use: CURRENT_DATE - INTERVAL 2 DAY or DATE '2025-01-31' - INTERVAL '2 days'
-12. But PREFER using explicit date literals from the context provided above
-13. **ALWAYS use human-readable column aliases instead of raw database column names**
+1. **PREFER VIEWS WHEN AVAILABLE**: If a user's question matches the purpose of an available view, use the view instead of querying the raw S3 data directly
+2. Query from the S3 path: '{schema_info['s3_path']}' only when no suitable view exists
+3. Use proper DuckDB syntax for arrays and structs
+4. For array columns like user_roles, use array syntax: user_roles[1] for first element
+5. For struct arrays like sources, use: sources[1].name or sources[1].score
+6. Date functions: Use EXTRACT(field FROM date) or date_part('field', date)
+7. String matching: Use LIKE or ILIKE for case-insensitive
+8. Always include proper GROUP BY clauses when using aggregations
+9. NEVER use relative date terms like 'today', 'yesterday', etc. Always use explicit dates in YYYY-MM-DD format
+10. For date comparisons, use proper DATE literals: DATE '2025-01-31'
+11. NEVER use MySQL syntax like DATE_SUB(), DATE_ADD(), or INTERVAL - these don't work in DuckDB
+12. For date arithmetic in DuckDB, use: CURRENT_DATE - INTERVAL 2 DAY or DATE '2025-01-31' - INTERVAL '2 days'
+13. But PREFER using explicit date literals from the context provided above
+14. **ALWAYS use human-readable column aliases instead of raw database column names**
 
 COLUMN ALIASING REQUIREMENTS:
 - Use meaningful, human-readable names for all columns in SELECT statements
@@ -190,17 +223,31 @@ EXAMPLES:
 User: "How many conversations are there?"
 Response: SELECT COUNT(*) as "Total Conversations" FROM '{schema_info['s3_path']}'
 
-User: "Show me conversations by date"
-Response: SELECT date as "Date", COUNT(*) as "Conversation Count" FROM '{schema_info['s3_path']}' GROUP BY date ORDER BY date
+User: "Show me conversations by date" OR "Show me interactions per day"
+Response: SELECT * FROM interactions_per_day
+
+User: "What are the most common actions?" OR "Show me popular actions"
+Response: SELECT * FROM popular_actions
+
+User: "Show me active sessions" OR "Which sessions had multiple interactions?"
+Response: SELECT * FROM active_sessions
+
+User: "Show me recent conversations" OR "What happened in the last week?"
+Response: SELECT * FROM recent_conversations
+
+User: "Show me activity by location" OR "Which stores are most active?"
+Response: SELECT * FROM location_activity
 
 User: "Show me all conversations from two days ago"
 Response: SELECT session_id as "Session ID", interaction_id as "Interaction", question as "Question", answer as "Answer", user_id as "User ID", location_id as "Store Location" FROM '{schema_info['s3_path']}' WHERE date = DATE '{two_days_ago}'
 
-User: "What are the most common actions?"
-Response: SELECT action as "Action Type", COUNT(*) as "Count" FROM '{schema_info['s3_path']}' GROUP BY action ORDER BY COUNT(*) DESC
-
-User: "Show me sessions with more than 3 interactions"
-Response: SELECT session_id as "Session ID", COUNT(*) as "Total Interactions" FROM '{schema_info['s3_path']}' GROUP BY session_id HAVING COUNT(*) > 3 ORDER BY COUNT(*) DESC
+VIEW USAGE PRIORITY:
+- If the user asks about daily interactions, conversation counts by date, or similar → use interactions_per_day view
+- If the user asks about popular actions, action types, or action statistics → use popular_actions view  
+- If the user asks about active sessions, engagement, or multi-interaction sessions → use active_sessions view
+- If the user asks about recent data or last week's conversations → use recent_conversations view
+- If the user asks about store locations, geography, or regional activity → use location_activity view
+- Only query the raw S3 data directly when no existing view matches the user's request
 """
         return prompt
     
@@ -267,6 +314,9 @@ Response: SELECT session_id as "Session ID", COUNT(*) as "Total Interactions" FR
                 SET s3_use_ssl = {'true' if 'https' in MINIO_ENDPOINT else 'false'};
                 SET s3_url_style = 'path';
             """)
+            
+            # Create all available views in this connection
+            self._create_views_in_connection(conn)
             
             # Execute the query
             result = conn.execute(sql).fetchall()

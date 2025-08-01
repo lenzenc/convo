@@ -509,6 +509,19 @@ def setup_duckdb_tables(with_sample_data=False):
         conn.close()
 
 
+def setup_default_views():
+    """Create default database views for analytics."""
+    logger.info("Setting up default database views...")
+    
+    try:
+        from view_manager import ViewManager
+        vm = ViewManager()
+        vm.create_default_views()
+        logger.info("Default views created successfully!")
+    except Exception as e:
+        logger.warning(f"Could not create views (this is optional): {e}")
+
+
 def main():
     """Main setup function."""
     parser = argparse.ArgumentParser(description='Setup conversation analytics project')
@@ -539,6 +552,9 @@ def main():
             setup_duckdb_tables(with_sample_data=True)
         else:
             setup_duckdb_tables(with_sample_data=False)
+        
+        # Set up default views (works with or without sample data)
+        setup_default_views()
             
         logger.info("Setup completed successfully!")
         
@@ -550,6 +566,7 @@ def main():
             logger.info("- Session distribution: 75% single interaction, 20% two interactions, 5% three+ interactions")
             logger.info("- Includes realistic retail operational Q&A")
             logger.info(f"- {FAILURE_RESPONSE_RATE}% of conversations have 'Sorry, I can't answer that' responses")
+            logger.info("- Default database views created for common analytics queries")
         
         logger.info("\nNext steps:")
         logger.info("1. Start services: docker-compose up -d")
@@ -558,7 +575,8 @@ def main():
         logger.info("4. To delete data: python setup.py -d")
         logger.info("5. MinIO console: http://localhost:9001 (minioadmin/minioadmin123)")
         logger.info("6. Tables are stored in S3: s3://convo/tables/")
-        logger.info("7. Query tables with DuckDB by reading from S3 paths")
+        logger.info("7. Database views are configured and ready to use")
+        logger.info("8. Query tables with DuckDB by reading from S3 paths or using views")
         
     except Exception as e:
         logger.error(f"Setup failed: {e}")

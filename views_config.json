@@ -1,0 +1,67 @@
+{
+  "version": "1.0",
+  "created": "2025-08-01T14:17:43.333368",
+  "views": {
+    "interactions_per_day": {
+      "name": "interactions_per_day",
+      "description": "Daily count of conversation interactions",
+      "sql_query": "\n                    SELECT \n                        date as \"Date\",\n                        COUNT(*) as \"Total Interactions\",\n                        COUNT(DISTINCT session_id) as \"Unique Sessions\",\n                        AVG(interaction_id) as \"Avg Interactions per Session\"\n                    FROM 's3://convo/tables/conversation_entry/**/*.parquet'\n                    GROUP BY date \n                    ORDER BY date DESC\n                ",
+      "tags": [
+        "daily",
+        "analytics",
+        "summary"
+      ],
+      "created": "2025-08-01T14:28:34.274291",
+      "updated": "2025-08-01T14:28:34.274301"
+    },
+    "popular_actions": {
+      "name": "popular_actions",
+      "description": "Most common action types in conversations",
+      "sql_query": "\n                    SELECT \n                        action as \"Action Type\",\n                        COUNT(*) as \"Count\",\n                        ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) as \"Percentage\"\n                    FROM 's3://convo/tables/conversation_entry/**/*.parquet'\n                    WHERE action IS NOT NULL\n                    GROUP BY action \n                    ORDER BY COUNT(*) DESC\n                ",
+      "tags": [
+        "actions",
+        "popular",
+        "percentage"
+      ],
+      "created": "2025-08-01T14:28:35.118015",
+      "updated": "2025-08-01T14:28:35.118025"
+    },
+    "active_sessions": {
+      "name": "active_sessions",
+      "description": "Sessions with multiple interactions (more engaging conversations)",
+      "sql_query": "\n                    SELECT \n                        session_id as \"Session ID\",\n                        COUNT(*) as \"Total Interactions\",\n                        MIN(question_created) as \"First Question\",\n                        MAX(answer_created) as \"Last Answer\",\n                        EXTRACT(EPOCH FROM (MAX(answer_created) - MIN(question_created))) / 60 as \"Duration (minutes)\"\n                    FROM 's3://convo/tables/conversation_entry/**/*.parquet'\n                    GROUP BY session_id \n                    HAVING COUNT(*) > 1\n                    ORDER BY COUNT(*) DESC\n                ",
+      "tags": [
+        "sessions",
+        "engagement",
+        "duration"
+      ],
+      "created": "2025-08-01T14:28:35.941274",
+      "updated": "2025-08-01T14:28:35.941288"
+    },
+    "recent_conversations": {
+      "name": "recent_conversations",
+      "description": "Conversations from the last 7 days",
+      "sql_query": "\n                    SELECT \n                        date as \"Date\",\n                        session_id as \"Session ID\",\n                        interaction_id as \"Interaction\",\n                        LEFT(question, 50) || '...' as \"Question Preview\",\n                        action as \"Action Type\",\n                        user_id as \"User ID\",\n                        location_id as \"Store Location\"\n                    FROM 's3://convo/tables/conversation_entry/**/*.parquet'\n                    WHERE date >= CURRENT_DATE - INTERVAL 7 DAY\n                    ORDER BY question_created DESC\n                ",
+      "tags": [
+        "recent",
+        "preview",
+        "last-week"
+      ],
+      "created": "2025-08-01T14:28:36.219489",
+      "updated": "2025-08-01T14:28:36.219498"
+    },
+    "location_activity": {
+      "name": "location_activity",
+      "description": "Conversation activity by store location",
+      "sql_query": "\n                    SELECT \n                        location_id as \"Store Location\",\n                        region_id as \"Region\",\n                        group_id as \"Group\",\n                        district_id as \"District\",\n                        COUNT(*) as \"Total Conversations\",\n                        COUNT(DISTINCT session_id) as \"Unique Sessions\",\n                        COUNT(DISTINCT user_id) as \"Unique Users\"\n                    FROM 's3://convo/tables/conversation_entry/**/*.parquet'\n                    WHERE location_id IS NOT NULL\n                    GROUP BY location_id, region_id, group_id, district_id\n                    ORDER BY COUNT(*) DESC\n                ",
+      "tags": [
+        "location",
+        "geography",
+        "stores"
+      ],
+      "created": "2025-08-01T14:28:37.231486",
+      "updated": "2025-08-01T14:28:37.231497"
+    }
+  },
+  "last_updated": "2025-08-01T14:28:37.231503"
+}
