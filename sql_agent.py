@@ -143,6 +143,25 @@ IMPORTANT DUCKDB SYNTAX RULES:
 10. NEVER use MySQL syntax like DATE_SUB(), DATE_ADD(), or INTERVAL - these don't work in DuckDB
 11. For date arithmetic in DuckDB, use: CURRENT_DATE - INTERVAL 2 DAY or DATE '2025-01-31' - INTERVAL '2 days'
 12. But PREFER using explicit date literals from the context provided above
+13. **ALWAYS use human-readable column aliases instead of raw database column names**
+
+COLUMN ALIASING REQUIREMENTS:
+- Use meaningful, human-readable names for all columns in SELECT statements
+- Transform technical column names into user-friendly labels
+- Examples of good aliases:
+  * session_id → "Session ID"
+  * interaction_id → "Interaction"
+  * question_created → "Question Time"
+  * answer_created → "Answer Time"
+  * user_id → "User ID"
+  * location_id → "Store Location"
+  * region_id → "Region"
+  * group_id → "Group"
+  * district_id → "District"
+  * user_roles → "User Roles"
+  * COUNT(*) → "Total Count"
+  * COUNT(DISTINCT session_id) → "Unique Sessions"
+  * AVG(interaction_id) → "Average Interactions"
 
 FORBIDDEN SYNTAX (DO NOT USE):
 - DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY) ❌
@@ -169,16 +188,19 @@ Return ONLY the SQL query, no explanations or markdown formatting. The query sho
 
 EXAMPLES:
 User: "How many conversations are there?"
-Response: SELECT COUNT(*) FROM '{schema_info['s3_path']}'
+Response: SELECT COUNT(*) as "Total Conversations" FROM '{schema_info['s3_path']}'
 
 User: "Show me conversations by date"
-Response: SELECT date, COUNT(*) as conversation_count FROM '{schema_info['s3_path']}' GROUP BY date ORDER BY date
+Response: SELECT date as "Date", COUNT(*) as "Conversation Count" FROM '{schema_info['s3_path']}' GROUP BY date ORDER BY date
 
 User: "Show me all conversations from two days ago"
-Response: SELECT * FROM '{schema_info['s3_path']}' WHERE date = DATE '{two_days_ago}'
+Response: SELECT session_id as "Session ID", interaction_id as "Interaction", question as "Question", answer as "Answer", user_id as "User ID", location_id as "Store Location" FROM '{schema_info['s3_path']}' WHERE date = DATE '{two_days_ago}'
 
 User: "What are the most common actions?"
-Response: SELECT action, COUNT(*) as count FROM '{schema_info['s3_path']}' GROUP BY action ORDER BY count DESC
+Response: SELECT action as "Action Type", COUNT(*) as "Count" FROM '{schema_info['s3_path']}' GROUP BY action ORDER BY COUNT(*) DESC
+
+User: "Show me sessions with more than 3 interactions"
+Response: SELECT session_id as "Session ID", COUNT(*) as "Total Interactions" FROM '{schema_info['s3_path']}' GROUP BY session_id HAVING COUNT(*) > 3 ORDER BY COUNT(*) DESC
 """
         return prompt
     
