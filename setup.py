@@ -279,7 +279,12 @@ def generate_conversation_data(num_conversations=5000):
             # Select question and corresponding answer
             qa_index = random.randint(0, len(RETAIL_QUESTIONS) - 1)
             question = RETAIL_QUESTIONS[qa_index]
-            answer = RETAIL_ANSWERS[qa_index]
+            
+            # 25% of conversations get "Sorry, I can't answer that" response
+            if random.random() < 0.25:
+                answer = "Sorry, I can't answer that."
+            else:
+                answer = RETAIL_ANSWERS[qa_index]
             
             # Add some variation to questions
             if random.random() < 0.2:
@@ -460,7 +465,7 @@ def setup_duckdb_tables(with_sample_data=False):
         conn.execute(f"""
             COPY conversation_entry 
             TO 's3://{BUCKET_NAME}/tables/conversation_entry/' 
-            (FORMAT PARQUET, PARTITION_BY (date, hour));
+            (FORMAT PARQUET, PARTITION_BY (date, hour), OVERWRITE_OR_IGNORE);
         """)
         
         logger.info(f"Created table structure in s3://{BUCKET_NAME}/tables/conversation_entry/")
@@ -489,12 +494,23 @@ def main():
     parser = argparse.ArgumentParser(description='Setup conversation analytics project')
     parser.add_argument('-a', '--add-data', action='store_true', 
                        help='Delete existing data and create sample conversation data')
+    parser.add_argument('-d', '--delete-data', action='store_true',
+                       help='Delete all data in S3 tables only')
     
     args = parser.parse_args()
     
     logger.info("Starting conversation analytics setup...")
     
     try:
+        if args.delete_data:
+            logger.info("Delete data flag detected - will delete all S3 table data")
+            setup_minio_bucket()  # Ensure bucket exists
+            delete_table_data()
+            logger.info("Data deletion completed successfully!")
+            logger.info("\nAll conversation data has been deleted from S3")
+            logger.info("Run 'python setup.py -a' to recreate sample data")
+            return
+        
         setup_minio_bucket()
         
         if args.add_data:
@@ -512,14 +528,16 @@ def main():
             logger.info("- Data spans the past 3 months")
             logger.info("- Conversations grouped by session_id")
             logger.info("- Includes realistic retail operational Q&A")
+            logger.info("- 25% of conversations have 'Sorry, I can't answer that' responses")
         
         logger.info("\nNext steps:")
         logger.info("1. Start services: docker-compose up -d")
         logger.info("2. Run this script: python setup.py")
         logger.info("3. For sample data: python setup.py -a")
-        logger.info("4. MinIO console: http://localhost:9001 (minioadmin/minioadmin123)")
-        logger.info("5. Tables are stored in S3: s3://convo/tables/")
-        logger.info("6. Query tables with DuckDB by reading from S3 paths")
+        logger.info("4. To delete data: python setup.py -d")
+        logger.info("5. MinIO console: http://localhost:9001 (minioadmin/minioadmin123)")
+        logger.info("6. Tables are stored in S3: s3://convo/tables/")
+        logger.info("7. Query tables with DuckDB by reading from S3 paths")
         
     except Exception as e:
         logger.error(f"Setup failed: {e}")

@@ -1,0 +1,12 @@
+# Core dependencies for Conversation Analytics Platform
+duckdb>=1.0.0
+boto3>=1.34.0
+pytz>=2024.1
+
+# AI/ML dependencies
+google-generativeai>=0.8.0
+openai>=1.0.0
+
+# Additional dependencies that may be required
+httpx>=0.25.0
+requests>=2.31.0
