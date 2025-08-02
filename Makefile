@@ -1,7 +1,7 @@
 # Conversation Analytics Platform Makefile
 # Provides easy commands for running scripts and managing the project
 
-.PHONY: help install clean start-infra stop-infra setup setup-data api cli test lint format check-deps health status views examples clean-data
+.PHONY: help install clean start-infra stop-infra setup setup-data api cli ui test lint format check-deps health status views examples clean-data
 
 # Default target
 help: ## Show this help message
@@ -13,6 +13,7 @@ help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 	@echo ""
 	@echo "Quick start: make install && make start-infra && make setup-data && make api"
+	@echo "Full stack: Add 'make ui' in another terminal for the React dashboard"
 
 # Installation and setup
 install: ## Install Python dependencies
@@ -104,6 +105,14 @@ api-stop: ## Stop background API server
 cli: ## Start interactive CLI for natural language queries
 	@echo "💬 Starting interactive CLI..."
 	@python cli/query_chat.py
+
+# UI Development
+ui: ## Start the React UI development server
+	@echo "🎨 Starting React UI development server..."
+	@echo "🌐 UI will be available at: http://localhost:3000"
+	@echo "💡 Press Ctrl+C to stop the server"
+	@echo ""
+	@cd ui && npm start
 
 # View management
 views-list: ## List all database views
@@ -244,6 +253,7 @@ dev-setup: ## Complete development setup
 	@echo "🎉 Development environment ready!"
 	@echo "💡 Next steps:"
 	@echo "   - Start API: make api"
+	@echo "   - Start UI (new terminal): make ui"
 	@echo "   - Try CLI: make cli"
 	@echo "   - Run tests: make test"
 	@echo "   - View examples: make examples"
@@ -267,6 +277,7 @@ demo: ## Run a complete demo
 	@echo ""
 	@echo "🎉 Demo complete!"
 	@echo "💡 Try 'make api' to start the web service"
+	@echo "💡 Try 'make ui' to start the React dashboard"
 
 # Docker shortcuts
 docker-logs: ## Show Docker container logs
@@ -281,6 +292,7 @@ docker-stats: ## Show Docker container stats
 urls: ## Show all relevant URLs
 	@echo "🔗 Service URLs"
 	@echo "==============="
+	@echo "React Dashboard:   http://localhost:3000"
 	@echo "API Documentation: http://localhost:8000/docs"
 	@echo "API ReDoc:         http://localhost:8000/redoc"
 	@echo "API Health:        http://localhost:8000/health"
