@@ -13,22 +13,18 @@ from typing import Dict, List, Any, Optional
 import google.generativeai as genai
 from openai import OpenAI
 from dotenv import load_dotenv
-from view_manager import ViewManager
+from .view_manager import ViewManager
 
 # Load environment variables
 load_dotenv()
 
-# Configuration from environment variables
-MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT', 'http://localhost:9000')
-MINIO_ACCESS_KEY = os.getenv('MINIO_ACCESS_KEY', 'minioadmin')
-MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY', 'minioadmin123')
-BUCKET_NAME = os.getenv('BUCKET_NAME', 'convo')
-DEFAULT_AI_PROVIDER = os.getenv('DEFAULT_AI_PROVIDER', 'openai')
-DEFAULT_AI_MODEL = os.getenv('DEFAULT_AI_MODEL', 'gpt-4')
-DUCKDB_CONNECTION = os.getenv('DUCKDB_CONNECTION', ':memory:')
-MAX_DISPLAY_ROWS = int(os.getenv('MAX_DISPLAY_ROWS', '10'))
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
-DEBUG_MODE = os.getenv('DEBUG_MODE', 'False').lower() == 'true'
+# Import configuration
+from ..config.settings import (
+    MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, BUCKET_NAME,
+    DEFAULT_AI_PROVIDER, DEFAULT_AI_MODEL, DUCKDB_CONNECTION,
+    MAX_DISPLAY_ROWS, LOG_LEVEL, DEBUG_MODE, OPENAI_API_KEY, GOOGLE_AI_API_KEY,
+    get_s3_config, get_table_s3_path
+)
 
 logging.basicConfig(level=getattr(logging, LOG_LEVEL.upper()))
 logger = logging.getLogger(__name__)
@@ -61,24 +57,22 @@ class SQLAgent:
     
     def _init_openai(self) -> OpenAI:
         """Initialize OpenAI client."""
-        api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
+        if not OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY environment variable not set")
-        return OpenAI(api_key=api_key)
+        return OpenAI(api_key=OPENAI_API_KEY)
     
     def _init_google_ai(self):
         """Initialize Google AI client."""
-        api_key = os.getenv('GOOGLE_AI_API_KEY')
-        if not api_key:
+        if not GOOGLE_AI_API_KEY:
             raise ValueError("GOOGLE_AI_API_KEY environment variable not set")
-        genai.configure(api_key=api_key)
+        genai.configure(api_key=GOOGLE_AI_API_KEY)
         self.google_model = genai.GenerativeModel('gemini-pro')
     
     def _get_table_schema(self) -> Dict[str, Any]:
         """Get the schema information for the conversation_entry table."""
         return {
             "table_name": "conversation_entry",
-            "s3_path": f"s3://{BUCKET_NAME}/tables/conversation_entry/**/*.parquet",
+            "s3_path": get_table_s3_path(),
             "columns": {
                 "entry_id": "VARCHAR - Unique identifier (session_id + interaction_id)",
                 "session_id": "VARCHAR - Session identifier for grouping conversations",
@@ -306,14 +300,9 @@ VIEW USAGE PRIORITY:
             conn.execute("LOAD httpfs;")
             
             # Configure S3 settings for MinIO using environment variables
-            endpoint = MINIO_ENDPOINT.replace('http://', '').replace('https://', '')
-            conn.execute(f"""
-                SET s3_endpoint = '{endpoint}';
-                SET s3_access_key_id = '{MINIO_ACCESS_KEY}';
-                SET s3_secret_access_key = '{MINIO_SECRET_KEY}';
-                SET s3_use_ssl = {'true' if 'https' in MINIO_ENDPOINT else 'false'};
-                SET s3_url_style = 'path';
-            """)
+            s3_config = get_s3_config()
+            for key, value in s3_config.items():
+                conn.execute(f"SET {key} = '{value}';");
             
             # Create all available views in this connection
             self._create_views_in_connection(conn)

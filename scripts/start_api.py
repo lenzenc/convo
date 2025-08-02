@@ -3,8 +3,15 @@
 Startup script for the Conversation Analytics API server.
 """
 
+import sys
+import os
 import uvicorn
-from api import app, logger
+import logging
+
+# Add src to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     logger.info("🚀 Starting Conversation Analytics API Server")
@@ -16,7 +23,7 @@ if __name__ == "__main__":
     logger.info("   GET /query?q=Show me interactions per day - AI-powered query")
     
     uvicorn.run(
-        app,
+        "convo.api.main:app",
         host="0.0.0.0",
         port=8000,
         reload=True,  # Enable auto-reload for development

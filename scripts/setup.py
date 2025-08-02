@@ -514,7 +514,10 @@ def setup_default_views():
     logger.info("Setting up default database views...")
     
     try:
-        from view_manager import ViewManager
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+        from convo.core.view_manager import ViewManager
         vm = ViewManager()
         vm.create_default_views()
         logger.info("Default views created successfully!")

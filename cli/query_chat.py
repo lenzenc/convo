@@ -15,7 +15,11 @@ from rich.table import Table
 from rich.prompt import Prompt
 from rich.panel import Panel
 from rich import print as rprint
-from sql_agent import SQLAgent
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from convo.core.sql_agent import SQLAgent
 
 # Load environment variables
 load_dotenv()

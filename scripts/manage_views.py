@@ -5,7 +5,11 @@ CLI tool for managing DuckDB views in the conversation analytics system.
 
 import sys
 import argparse
-from view_manager import ViewManager
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from convo.core.view_manager import ViewManager
 
 def list_views(args):
     """List all available views."""

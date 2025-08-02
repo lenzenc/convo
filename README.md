@@ -1,23 +1,48 @@
 # Conversation Analytics Platform
 
-A modern data analytics platform for analyzing conversational AI interactions using DuckDB and MinIO. This project provides tools for storing, querying, and analyzing conversation data with both traditional SQL and AI-powered natural language queries.
+A modern, professionally-structured data analytics platform for analyzing conversational AI interactions. Built with DuckDB, MinIO, and FastAPI, this platform provides comprehensive tools for storing, querying, and analyzing conversation data with both traditional SQL and AI-powered natural language queries.
 
-## Architecture
+## 🚀 Features
 
-- **Storage**: MinIO S3-compatible object storage
-- **Analytics**: DuckDB for high-performance analytical queries
-- **Data Format**: Partitioned Parquet files for optimal query performance
-- **AI Integration**: Natural language to SQL conversion using OpenAI GPT-4 or Google Gemini
+- **🏗️ Professional Architecture**: Organized Python package structure with clear separation of concerns
+- **📊 High Performance**: DuckDB with S3 integration for fast analytical queries on partitioned Parquet data
+- **🤖 AI-Powered Querying**: Natural language to SQL conversion using OpenAI GPT-4 or Google Gemini
+- **🌐 REST API**: Comprehensive FastAPI-based web service with interactive documentation
+- **🔍 Database Views**: Pre-built analytical views for common queries with automatic AI integration
+- **💻 Multiple Interfaces**: Interactive CLI, REST API, and programmatic access
+- **🏪 Realistic Data**: 5000+ retail operational conversations with authentic Q&A patterns
+- **🧪 Comprehensive Testing**: Full test suite with fixtures and integration tests
 
-## Features
+## 📁 Project Structure
 
-- 🚀 **High Performance**: DuckDB with S3 integration for fast analytical queries
-- 📊 **Partitioned Storage**: Data partitioned by date/hour for efficient filtering
-- 🤖 **AI-Powered Querying**: Ask questions in natural language, get SQL results
-- 🏪 **Realistic Sample Data**: 5000+ retail operational conversations with authentic Q&A patterns
-- 🔄 **Flexible Data Management**: Easy setup, data generation, and cleanup tools
+```
+convo/
+├── src/convo/                  # Main Python package
+│   ├── core/                   # Core business logic
+│   │   ├── view_manager.py     # Database view management
+│   │   └── sql_agent.py        # AI SQL generation
+│   ├── api/                    # REST API components
+│   │   ├── main.py             # FastAPI application
+│   │   ├── models.py           # Pydantic request/response models
+│   │   └── routes/             # API endpoints
+│   │       ├── health.py       # Health check endpoints
+│   │       ├── views.py        # Database view endpoints
+│   │       └── query.py        # AI query endpoints
+│   └── config/                 # Configuration management
+│       └── settings.py         # Centralized settings
+├── scripts/                    # Utility scripts
+│   ├── setup.py               # Data setup and initialization
+│   ├── manage_views.py        # View management CLI
+│   └── start_api.py           # API server startup
+├── cli/                       # Command-line interfaces
+│   └── query_chat.py          # Interactive query CLI
+├── examples/                  # Usage examples
+├── tests/                     # Comprehensive test suite
+├── data/                      # Data files and configurations
+└── docs/                      # Documentation
+```
 
-## Quick Start
+## 🛠️ Quick Start
 
 ### Prerequisites
 
@@ -25,58 +50,204 @@ A modern data analytics platform for analyzing conversational AI interactions us
 - Docker and Docker Compose
 - Poetry (recommended) or pip
 
-### 1. Installation
+### Super Quick Start (Using Makefile)
 
 ```bash
 # Clone the repository
 git clone <repository-url>
 cd convo
 
-# Install dependencies
-poetry install
-# OR using pip
-pip install -r requirements.txt
+# Complete setup in one command
+make dev-setup
 
-# Copy configuration template
-cp .env.example .env
-# Edit .env with your settings (API keys, etc.)
+# Start the API server
+make api
+
+# Or try the interactive CLI
+make cli
 ```
 
-### 2. Start Infrastructure
+### Manual Setup
+
+If you prefer manual setup or want more control:
+
+#### 1. Installation
+
+```bash
+# Install dependencies
+make install
+# OR manually:
+# poetry install  # or pip install -r requirements.txt
+```
+
+#### 2. Start Infrastructure
 
 ```bash
 # Start MinIO object storage
-docker-compose up -d
-
-# Verify MinIO is running
-curl http://localhost:9000/minio/health/live
+make start-infra
+# OR manually:
+# docker-compose up -d
 ```
 
-### 3. Generate Sample Data
+#### 3. Initialize Data
 
 ```bash
-# Create tables and generate 5000 sample conversations
-python setup.py -a
+# Create tables, views, and generate sample data
+make setup-data
+# OR manually:
+# python scripts/setup.py -a
 ```
 
 This creates:
 - **5000 conversations** with 1-8 interactions each (~15,000+ total entries)
+- **Pre-built database views** for common analytics queries
 - **Realistic retail scenarios**: Inventory, customer service, POS, safety, HR, seasonal
-- **25% failure rate**: "Sorry, I can't answer that" responses
-- **3-month timespan**: Data distributed across the past 90 days
-- **Proper partitioning**: Organized by date and hour for efficient queries
+- **Partitioned storage**: Organized by date and hour for efficient queries
 
-### 4. Verify Setup
+#### 4. Start the API Server
 
 ```bash
-# Test basic functionality
-python test_agent.py
+# Launch the FastAPI server
+make api
+# OR manually:
+# python scripts/start_api.py
 
-# Run sample queries
-python query_example.py
+# API will be available at:
+# - Interactive docs: http://localhost:8000/docs
+# - ReDoc: http://localhost:8000/redoc
+# - Health check: http://localhost:8000/health
 ```
 
-## Data Schema
+## 🎯 Usage Examples
+
+### REST API
+
+```bash
+# List all database views
+curl http://localhost:8000/views
+
+# Execute a pre-built view
+curl "http://localhost:8000/views/interactions_per_day/execute?limit=10"
+
+# AI-powered natural language query
+curl "http://localhost:8000/query?q=Show me popular actions&debug=true"
+
+# Browse interactive API documentation
+open http://localhost:8000/docs
+```
+
+### Interactive CLI
+
+```bash
+# Configure AI provider (choose one)
+export OPENAI_API_KEY="your-openai-key"
+# OR
+export GOOGLE_AI_API_KEY="your-google-key"
+
+# Start interactive CLI
+make cli
+# OR manually:
+# python cli/query_chat.py
+
+# Example questions:
+# - "How many conversations are there?"
+# - "Show me interactions per day"
+# - "What are the most popular actions?"
+# - "Which sessions had multiple interactions?"
+```
+
+### Makefile Commands
+
+The project includes a comprehensive Makefile for easy management:
+
+```bash
+# Get help with all available commands
+make help
+
+# Quick development setup
+make dev-setup          # Complete setup: install, infra, data, views
+
+# Infrastructure management
+make start-infra        # Start MinIO with Docker Compose
+make stop-infra         # Stop infrastructure
+make restart-infra      # Clean restart with volume reset
+
+# Data management
+make setup              # Basic table setup
+make setup-data         # Create sample data (5000+ conversations)
+make clean-data         # Delete all data
+
+# Services
+make api                # Start FastAPI server
+make cli                # Start interactive CLI
+
+# Database views
+make views-list         # List all available views
+make views-create       # Create default views
+make views-test         # Test views with sample data
+
+# Testing and validation
+make test               # Run all tests
+make test-core          # Core functionality tests
+make test-api           # API endpoint tests
+make health             # System health check
+make status             # Current system status
+
+# Development tools
+make format             # Format code (if black installed)
+make lint               # Lint code (if flake8 installed)
+make check-deps         # Check dependency availability
+
+# Utilities
+make clean              # Clean temporary files
+make urls               # Show all service URLs
+make info               # Project information
+make demo               # Run complete demo
+```
+
+### Programmatic Access
+
+```python
+from convo.core.sql_agent import SQLAgent
+from convo.core.view_manager import ViewManager
+
+# AI-powered SQL generation
+agent = SQLAgent()
+results = agent.ask("Show me conversations by date")
+
+# Database view management
+vm = ViewManager()
+views = vm.list_views()
+vm.execute_view("interactions_per_day")
+```
+
+## 🗄️ Database Views
+
+The platform includes pre-built analytical views that the AI agent automatically uses:
+
+- **`interactions_per_day`**: Daily conversation counts and session statistics
+- **`popular_actions`**: Most common action types with percentages
+- **`active_sessions`**: Sessions with multiple interactions showing engagement
+- **`recent_conversations`**: Last 7 days of conversation activity
+- **`location_activity`**: Conversation activity grouped by store locations
+
+### View Management
+
+```bash
+# List all views
+python scripts/manage_views.py list
+
+# Get view details
+python scripts/manage_views.py show interactions_per_day
+
+# Test a view
+python scripts/manage_views.py test interactions_per_day --limit 5
+
+# Create default views
+python scripts/manage_views.py create-defaults
+```
+
+## 📊 Data Schema
 
 ### Conversation Entry Table
 
@@ -102,196 +273,220 @@ python query_example.py
 
 **Storage**: `s3://convo/tables/conversation_entry/` (partitioned by date/hour)
 
-## Usage Examples
-
-### Traditional SQL Queries
-
-```python
-import duckdb
-
-# Connect and configure
-conn = duckdb.connect(':memory:')
-conn.execute("INSTALL httpfs; LOAD httpfs;")
-conn.execute("""
-    SET s3_endpoint = 'localhost:9000';
-    SET s3_access_key_id = 'minioadmin';
-    SET s3_secret_access_key = 'minioadmin123';
-    SET s3_use_ssl = false;
-    SET s3_url_style = 'path';
-""")
-
-# Query the data
-result = conn.execute("""
-    SELECT 
-        date,
-        COUNT(*) as conversations,
-        AVG(interaction_id) as avg_interactions
-    FROM 's3://convo/tables/conversation_entry/**/*.parquet' 
-    GROUP BY date 
-    ORDER BY date
-""").fetchall()
-```
-
-### AI-Powered Natural Language Queries
-
-```bash
-# Configure your API keys in .env file:
-# OPENAI_API_KEY=your-openai-api-key
-# GOOGLE_AI_API_KEY=your-google-ai-api-key
-# DEFAULT_AI_PROVIDER=openai
-
-# Launch web interface
-python query_chat.py
-# Opens automatically at http://localhost:7860
-```
-
-**Web Interface Features:**
-- 🌐 **Clean Web UI**: User-friendly interface with real-time results
-- 📊 **Markdown Rendering**: Results displayed as formatted tables and charts
-- 🔍 **SQL Debug Mode**: View generated SQL queries when `DEBUG_MODE=True`
-- 📱 **Responsive Design**: Works on desktop, tablet, and mobile
-- 🔄 **Real-time Processing**: Instant query execution with loading indicators
-
-**Example Queries:**
-- "How many conversations are there?"
-- "What are the busiest hours for conversations?"
-- "Show me conversations by date"
-- "How many conversations couldn't be answered?"
-- "What are the most common inventory questions?"
-
-### Alternative Query Methods
-
-```bash
-# Basic querying examples (command line)
-python query_example.py
-
-# Test the AI agent
-python test_agent.py
-
-# Web interface (recommended)
-python query_chat.py
-```
-
-## Management Commands
-
-### Setup Commands
-```bash
-# Basic setup (table structure only)
-python setup.py
-
-# Create sample data (recommended)
-python setup.py -a
-
-# Delete all data
-python setup.py -d
-```
-
-### Data Operations
-```bash
-# View MinIO console
-open http://localhost:9001
-# Login: minioadmin / minioadmin123
-
-# Stop services
-docker-compose down
-
-# Clean restart
-docker-compose down -v  # Remove volumes
-docker-compose up -d
-python setup.py -a      # Recreate data
-```
-
-## Development
-
-### Project Structure
-```
-convo/
-├── setup.py              # Main setup and data generation
-├── sql_agent.py           # AI-powered SQL generation
-├── query_chat.py          # Interactive natural language interface
-├── query_example.py       # Sample query demonstrations
-├── test_agent.py          # Testing utilities
-├── docker-compose.yml     # MinIO infrastructure
-├── pyproject.toml         # Python dependencies
-└── tables.sql            # Original table schema reference
-```
-
-### Adding Custom Data
-
-To add your own conversation data:
-
-1. **Follow the schema**: Match the conversation_entry table structure
-2. **Maintain partitioning**: Include proper date/hour values
-3. **Use DuckDB COPY**: Export data to S3 with partitioning
-
-```python
-# Example: Custom data insertion
-conn.execute("""
-    COPY your_custom_table 
-    TO 's3://convo/tables/conversation_entry/' 
-    (FORMAT PARQUET, PARTITION_BY (date, hour), OVERWRITE_OR_IGNORE)
-""")
-```
-
-### Testing
+## 🧪 Testing
 
 ```bash
 # Run all tests
-python test_agent.py
+pytest tests/
 
-# Test specific components
-python -c "from sql_agent import SQLAgent; agent = SQLAgent(); print('Agent initialized')"
+# Run specific test categories
+pytest tests/test_core/      # Core functionality tests
+pytest tests/test_api/       # API endpoint tests
+pytest tests/integration/   # Integration tests
+
+# Test project structure
+python test_structure.py
 ```
 
-## Performance Notes
+## ⚙️ Configuration
 
-- **Partitioning**: Queries filtering by date/hour are highly optimized
-- **Columnar Storage**: Parquet format enables efficient column-based analytics
-- **S3 Integration**: DuckDB's httpfs extension provides seamless S3 querying
-- **Memory Efficiency**: In-memory DuckDB connections minimize resource usage
+The platform uses centralized configuration in `src/convo/config/settings.py`:
 
-## Troubleshooting
+```python
+# Environment variables (add to .env file)
+OPENAI_API_KEY=your-openai-api-key
+GOOGLE_AI_API_KEY=your-google-api-key
+DEFAULT_AI_PROVIDER=openai
+
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin123
+BUCKET_NAME=convo
+
+API_HOST=0.0.0.0
+API_PORT=8000
+DEBUG_MODE=false
+```
+
+## 🚀 Deployment
+
+### Docker
+
+```dockerfile
+# Example Dockerfile (create as needed)
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY . .
+RUN pip install -r requirements.txt
+
+EXPOSE 8000
+CMD ["python", "scripts/start_api.py"]
+```
+
+### Kubernetes
+
+Basic deployment manifests can be created in `infrastructure/kubernetes/`:
+
+```yaml
+# Example deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: convo-analytics
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: convo-analytics
+  template:
+    spec:
+      containers:
+      - name: api
+        image: convo-analytics:latest
+        ports:
+        - containerPort: 8000
+```
+
+## 🔧 Development
+
+### Adding New Features
+
+1. **Core Logic**: Add to `src/convo/core/`
+2. **API Endpoints**: Add to `src/convo/api/routes/`
+3. **Configuration**: Update `src/convo/config/settings.py`
+4. **Tests**: Add to appropriate `tests/` subdirectory
+5. **Documentation**: Update relevant docs
+
+### Code Quality
+
+```bash
+# Format code
+black src/ tests/
+
+# Lint code
+flake8 src/ tests/
+
+# Type checking
+mypy src/
+```
+
+## 📚 API Documentation
+
+The REST API provides comprehensive interactive documentation:
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+### Key Endpoints
+
+- `GET /health` - Service health check
+- `GET /views` - List database views
+- `GET /views/{name}/execute` - Execute a view
+- `GET /query` - AI-powered natural language queries
+- `POST /query` - AI queries with request body
+
+## 🛠️ Management Commands
+
+Using the Makefile (recommended):
+
+```bash
+# Setup and data management
+make setup              # Basic setup
+make setup-data         # Create sample data
+make clean-data         # Delete all data
+
+# API server
+make api                # Start FastAPI server
+
+# View management
+make views-list         # List all views
+make views-create       # Create default views
+make views-test         # Test views with sample data
+
+# Interactive CLI
+make cli                # Natural language queries
+
+# Infrastructure
+make start-infra        # Start MinIO
+make stop-infra         # Stop MinIO
+make health             # Check system health
+```
+
+Or using direct script calls:
+
+```bash
+# Setup and data management
+python scripts/setup.py           # Basic setup
+python scripts/setup.py -a        # Create sample data
+python scripts/setup.py -d        # Delete all data
+
+# API server
+python scripts/start_api.py       # Start FastAPI server
+
+# View management
+python scripts/manage_views.py list
+python scripts/manage_views.py show view_name
+python scripts/manage_views.py test view_name
+
+# Interactive CLI
+python cli/query_chat.py          # Natural language queries
+```
+
+## 🔍 Troubleshooting
 
 ### Common Issues
 
+**Import Errors**
+```bash
+# Ensure you're in the project root and using the correct Python environment
+python test_structure.py
+```
+
 **MinIO Connection Failed**
 ```bash
-# Check if MinIO is running
+# Check MinIO status
 docker-compose ps
 curl http://localhost:9000/minio/health/live
-```
 
-**Missing Dependencies**
-```bash
-# Install missing modules
-poetry install
-# OR
-pip install pytz duckdb boto3 google-generativeai openai
-```
-
-**S3 Permission Errors**
-```bash
-# Restart MinIO with clean state
-docker-compose down -v
+# Restart if needed
+docker-compose down
 docker-compose up -d
 ```
 
 **AI Query Errors**
 ```bash
-# Check your .env file contains API keys
-cat .env | grep API_KEY
-
-# Verify environment variables are loaded
-python -c "from dotenv import load_dotenv; load_dotenv(); import os; print('OpenAI:', bool(os.getenv('OPENAI_API_KEY'))); print('Google:', bool(os.getenv('GOOGLE_AI_API_KEY')))"
+# Verify API keys are configured
+python -c "from convo.config.settings import validate_config; print(validate_config())"
 ```
 
-## Contributing
+**View Execution Errors**
+```bash
+# Test view management
+python scripts/manage_views.py test interactions_per_day
+```
+
+## 📈 Performance
+
+- **Partitioned Storage**: Queries filtering by date/hour are highly optimized
+- **Columnar Format**: Parquet enables efficient analytical workloads
+- **Pre-built Views**: Common queries cached for instant results
+- **Connection Pooling**: Efficient database connection management
+- **S3 Integration**: DuckDB's httpfs provides seamless cloud storage access
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Follow the project structure and add tests
+4. Commit changes (`git commit -m 'Add amazing feature'`)
+5. Push to branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
 
-## License
+## 📄 License
 
 This project is for experimental and educational purposes.
+
+---
+
+For detailed project structure information, see [docs/project_structure.md](docs/project_structure.md)

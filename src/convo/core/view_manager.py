@@ -16,12 +16,11 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Configuration
-MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT', 'http://localhost:9000')
-MINIO_ACCESS_KEY = os.getenv('MINIO_ACCESS_KEY', 'minioadmin')
-MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY', 'minioadmin123')
-BUCKET_NAME = os.getenv('BUCKET_NAME', 'convo')
-DUCKDB_CONNECTION = os.getenv('DUCKDB_CONNECTION', ':memory:')
+# Import configuration
+from ..config.settings import (
+    MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY,
+    BUCKET_NAME, DUCKDB_CONNECTION, get_s3_config, get_table_s3_path
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,16 +28,21 @@ logger = logging.getLogger(__name__)
 class ViewManager:
     """Manages DuckDB views for the conversation analytics system."""
     
-    def __init__(self, views_config_path: str = "views_config.json"):
+    def __init__(self, views_config_path: str = None):
         """
         Initialize the ViewManager.
         
         Args:
             views_config_path: Path to the JSON file storing view definitions
         """
+        if views_config_path is None:
+            # Default to data/views_config.json relative to project root
+            project_root = Path(__file__).parent.parent.parent.parent
+            views_config_path = project_root / "data" / "views_config.json"
+        
         self.views_config_path = Path(views_config_path)
         self.views = self._load_views_config()
-        self.s3_path = f"s3://{BUCKET_NAME}/tables/conversation_entry/**/*.parquet"
+        self.s3_path = get_table_s3_path()
     
     def _load_views_config(self) -> Dict[str, Dict]:
         """Load view definitions from JSON config file."""
@@ -78,14 +82,9 @@ class ViewManager:
         conn.execute("LOAD httpfs;")
         
         # Configure S3 settings for MinIO
-        endpoint = MINIO_ENDPOINT.replace('http://', '').replace('https://', '')
-        conn.execute(f"""
-            SET s3_endpoint = '{endpoint}';
-            SET s3_access_key_id = '{MINIO_ACCESS_KEY}';
-            SET s3_secret_access_key = '{MINIO_SECRET_KEY}';
-            SET s3_use_ssl = {'true' if 'https' in MINIO_ENDPOINT else 'false'};
-            SET s3_url_style = 'path';
-        """)
+        s3_config = get_s3_config()
+        for key, value in s3_config.items():
+            conn.execute(f"SET {key} = '{value}';");
         
         return conn
     
