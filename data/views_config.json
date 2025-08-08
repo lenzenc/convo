@@ -11,8 +11,8 @@
         "analytics",
         "summary"
       ],
-      "created": "2025-08-01T19:06:35.046790",
-      "updated": "2025-08-01T19:06:35.046804"
+      "created": "2025-08-08T10:05:18.278529",
+      "updated": "2025-08-08T10:05:18.278538"
     },
     "popular_actions": {
       "name": "popular_actions",
@@ -23,8 +23,8 @@
         "popular",
         "percentage"
       ],
-      "created": "2025-08-01T19:06:35.997135",
-      "updated": "2025-08-01T19:06:35.997146"
+      "created": "2025-08-08T10:05:20.414067",
+      "updated": "2025-08-08T10:05:20.414077"
     },
     "active_sessions": {
       "name": "active_sessions",
@@ -35,8 +35,8 @@
         "engagement",
         "duration"
       ],
-      "created": "2025-08-01T19:06:36.842861",
-      "updated": "2025-08-01T19:06:36.842878"
+      "created": "2025-08-08T10:05:22.318121",
+      "updated": "2025-08-08T10:05:22.318132"
     },
     "recent_conversations": {
       "name": "recent_conversations",
@@ -47,8 +47,8 @@
         "preview",
         "last-week"
       ],
-      "created": "2025-08-01T19:06:37.109182",
-      "updated": "2025-08-01T19:06:37.109191"
+      "created": "2025-08-08T10:05:22.601620",
+      "updated": "2025-08-08T10:05:22.601629"
     },
     "location_activity": {
       "name": "location_activity",
@@ -59,9 +59,9 @@
         "geography",
         "stores"
       ],
-      "created": "2025-08-01T19:06:39.437941",
-      "updated": "2025-08-01T19:06:39.437954"
+      "created": "2025-08-08T10:05:24.441418",
+      "updated": "2025-08-08T10:05:24.441427"
     }
   },
-  "last_updated": "2025-08-01T19:06:39.437960"
+  "last_updated": "2025-08-08T10:05:24.441433"
 }
