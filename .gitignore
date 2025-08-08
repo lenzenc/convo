@@ -58,3 +58,4 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+data/views_config.json
